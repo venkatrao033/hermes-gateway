@@ -19,12 +19,15 @@ Use when the user asks about currency pairs, exchange rates, forex prices, daily
    `https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD,INR`
    `/v1/2026-11-20` for a date, `/v1/2026-11-01..2026-11-26?base=EUR` for a range. One value per ECB day (~16:00 CET), no weekends, covers majors + INR.
 3. ECB daily XML: `https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml`.
-4. yfinance (installed in the Hermes venv, with pandas): daily/intraday history like `EURUSD=X`. Slower and heavier - only when 1-3 cannot answer.
+4. Long daily history without heavy libraries (RAM is tight on this host - do NOT install or import pandas/yfinance/numpy; use python3 stdlib only):
+   - biquote with interval=1d or 4h for long pair history.
+   - Frankfurter `/v1/{start}..{end}?base=EUR&symbols=USD,INR` for daily ECB time series.
+   - Compute indicators (SMA, EMA, RSI, stdev, drawdown) in pure python over the bar lists - they are simple loops.
 
 ## Rules
 - Never invent a price. Always fetch live, and state the source plus the UTC timestamp of the newest bar used.
 - Forex is closed roughly Fri 22:00 UTC to Sun 22:00 UTC - say so when bars are stale or `isOpen` is false.
-- Compute with code (python3 + urllib, or pandas for history), never mental math. Pip = 0.0001 for most pairs, 0.01 for JPY pairs.
+- Compute with code (python3 stdlib: urllib + statistics + math only - no pandas/numpy on this 512 MB host), never mental math. Pip = 0.0001 for most pairs, 0.01 for JPY pairs.
 - This is research/education on request, not financial advice. Never claim live-account results; the user's trading is demo-only.
 - Keep memory use low: prefer the small HTTP APIs over loading long history.
 
@@ -39,7 +42,7 @@ Use when the user asks about currency pairs, exchange rates, forex prices, daily
 When the user asks to find or search for a trading strategy, run a real research loop, not one idea:
 
 1. Search many directions: trend (MA crosses, Donchian/breakout), mean-reversion (RSI or Bollinger fades), momentum, session/time-of-day patterns, volatility regimes, multi-timeframe filters. Vary pairs (EURUSD, GBPUSD, AUDUSD, NZDUSD, USDJPY, USDCAD) and timeframes (15m, 1h, 4h, 1d).
-2. Data: yfinance daily/hourly, or biquote bars. Every result must name pair, timeframe, exact date range, and source.
+2. Data: biquote bars (1m up to 1d) and Frankfurter daily series, fetched with urllib. No heavy libraries. Every result must name pair, timeframe, exact date range, and source.
 3. Costs always on: subtract spread + slippage per trade BEFORE judging (default 1.0 pip spread + 0.5 pip slippage on majors, wider on crosses). A strategy that only wins before costs is a loser.
 4. Split the data: screen variants on the first 70%, then run ONE untouched final test on the last 30%. Report both. If the untouched test disagrees, it failed - say so.
 5. Count trials honestly: report how many variants were tested. Many trials produce lucky winners, so a candidate is only interesting if the untouched test agrees.
